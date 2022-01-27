@@ -1,28 +1,44 @@
 # importing socket
 import socket
+import threading
 
 
-def EstablishedConnection():
-    HOST = '127.0.0.1'
-    PORT = 9999
-    newConnnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # binding the connection with host and the port
-
-    newConnnection.bind((HOST, PORT))
-    print("Establishing Connection")
-    newConnnection.listen(2)
-
-    conn, addr = newConnnection.accept()
-
-    with conn:
-        print("connected by", addr)
-
-        while True:
-            data = conn.recv(1024)
-
-            if not data:
-                break
-            conn.sendall(data)
+HostIPaddr = socket.gethostbyname(socket.gethostname())
+print(HostIPaddr)
+PORT = 9999
+ADDR = (HostIPaddr, PORT)
+HEADER = 64
+DISCONNECTED_MSG = "!DISCONNECTED"
+# Making a socket server
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR)
+FORMAT = "UTF-8"
 
 
-EstablishedConnection()
+def client_handler(conn, addr):
+    print(f"[NEW CONNECTION] {addr} connected")
+    CONNECTED = True
+    while CONNECTED:
+        msg_length = conn.recv(HEADER).decode(FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+
+            msg = conn.recv(msg_length).decode(FORMAT)
+            if msg == DISCONNECTED_MSG:
+                CONNECTED = False
+            print(f"[{addr}]: {msg}")
+
+    conn.close()
+
+
+def start():
+    server.listen()
+    while True:
+        conn, addr = server.accept()
+        thread = threading.Thread(target=client_handler, args=(conn, addr))
+        thread.start()
+        print(f"[ACTIVE CONNECTION] {threading.active_count()-1}")
+
+
+print("[STARTING] server is ready to coonnect....")
+start()
